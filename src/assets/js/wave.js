@@ -2,11 +2,8 @@
 //= require ../_vendor/jquery-ui.min.js
 
 (function(){
-	// canvas object;
-	var canvas = document.getElementById('wave'),
-		context = canvas.getContext('2d'),
-		width = canvas.width = $(window).width(),
-		height = canvas.height = $(window).height(),
+	var width = window.innerWidth,
+		height = window.innerHeight,
 		target = {
 			x : width - 200,
 			y : height / 2
@@ -28,17 +25,10 @@
 		k,
 		i;
 
-
-	// mouse x, y 좌표.
-	$(window).on('mousemove', function ( event ){
-		target.x = event.clientX;
-		target.y = event.clientY;
-	}).on('resize', function(){
-		width = canvas.width = $(window).width();
-		height = canvas.height = $(window).height();
-
-		pointSet();
-	});
+	function bounceCheck (){
+		var wavePoint = (width + 200) / point,
+			eventPoint = Math.floor( target.x / wavePoint );
+	}
 
 	function pointSet(){
 		for( k=0; k<waveLen; k++ ) {
@@ -53,7 +43,7 @@
 				bounces[k] = [];
 			}
 			for( i=0; i<point; i++ ){
-				bounces[k].push( 60 );
+				bounces[k].push( 10 + i*2 );
 				points[k].push( {
 					x : (width + 200) / point * (i+1),
 					y : defaultPath.y1,
@@ -66,8 +56,8 @@
 						}
 					})(),
 
-					maxLeft : (width + 200) / point * (i+1) - 50,
-					maxRight : (width + 200) / point * (i+1) + 50,
+					maxLeft : (width + 200) / point * (i+1) - 80,
+					maxRight : (width + 200) / point * (i+1) + 80,
 					maxCy : defaultPath.y1 + bounces[k][i],
 					minCy : defaultPath.y1 - bounces[k][i],
 					distance : (function(){
@@ -81,18 +71,9 @@
 				} );
 			}
 		}
-		
-		
 	};
 
-
-	function toRadian(deg){
-		return deg * (Math.PI/180);
-	};
-
-	var frame = 0;
-	// canvas draw
-	function draw(){
+	function draw( context, frame ){
 		var j=0,
 			l = 0,
 			ty = target.y,
@@ -134,23 +115,30 @@
 
 				if( p.x  > p.maxRight && p.distance2 === 'right' ) {
 					p.distance2 = 'left';
-				} else if( p.x < p.maxLeft && p.distance2 === 'left' ) {
+			} else if( p.x < p.maxLeft && p.distance2 === 'left' ) {
 					p.distance2 = 'right';
 				}
 
 				if( p.distance2 === 'right' ) {
-					p.x += Math.ceil( ( p.maxRight - p.x ) / 50  ) * ( Math.random( ) * 4 / 1.2 ) ;
-				} else {
-					p.x -= Math.ceil( ( p.x - p.maxLeft ) / 50  ) * ( Math.random( ) * 4 / 1.2 ) ;
-				}
-				
+					if( l === 0 ){
+						p.x += Math.ceil( ( p.maxRight - p.x ) / 100  ) * ( Math.random( ) * 2 * 0.5 ) ;
+					} else {
+						p.x = points[l-1][j].x;
+					}
 					
-				
-				
-				if( p.distance === 'down' ){
-					p.cy += Math.ceil( ( p.maxCy - p.cy ) / 50  ) * ( Math.random( ) * 4 / 1.2 ) ;
 				} else {
-					p.cy -= Math.ceil( ( p.cy - p.minCy ) / 50  ) * ( Math.random( ) * 4 / 1.2 ) ;
+					if( l === 0 ){
+						p.x -= Math.ceil( ( p.x - p.maxLeft ) / 100  ) * ( Math.random( ) * 2 * 0.5 ) ;
+					} else {
+						p.x = points[l-1][j].x;
+					}
+					
+				}
+
+				if( p.distance === 'down' ){
+					p.cy += Math.ceil( ( p.maxCy - p.cy ) / 30  ) * ( Math.random( ) * 2 * 0.5 ) ;
+				} else {
+					p.cy -= Math.ceil( ( p.cy - p.minCy ) / 30  ) * ( Math.random( ) * 2 * 0.5 ) ;
 				}
 				context.quadraticCurveTo(p.cx, p.cy, p.x, p.y); // cp1x, cp1y, cp2x, cp2y, x, y)
 			}
@@ -164,20 +152,43 @@
 			context.globalCompositeOperation = 'lighterxor';
 			context.fill();
 			context.closePath();
+			$('#output').val( 'FRAME : ' + frame );
 		}
-
-
-		requestAnimationFrame(draw);
-		frame ++;
+		// requestAnimationFrame(draw);
 	};
 
-	setInterval( function(){
-		$('#output').val( 'FRAME : ' + frame );
-		frame = 0;
-	}, 1000 );
-
 	pointSet();
-	draw();
+
+	canvas('wave', {
+		width : window.innerWidth,
+		height : window.innerHeight,
+		frameRate : 'auto',
+		callback : null,
+		enterFrame : function( context, frame, all ){
+			draw( context, frame );
+		}
+	});
+	
+
+	// mouse x, y 좌표.
+	$(window).on('mousemove', function ( event ){
+		target.x = event.clientX;
+		target.y = event.clientY;
+	}).on('resize', function(){
+		width = $(window).width();
+		height = $(window).height();
+		canvas('wave', 'resize', {
+			'width' : width,
+			'height' : height
+		} );
+		pointSet();
+	});
+
+
+	
+
+	
+	// draw();
 
 
 })();

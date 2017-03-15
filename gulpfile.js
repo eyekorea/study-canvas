@@ -171,13 +171,13 @@ gulp.task('script', function () {
 	// gulp-plumber: 작업 중 오류가 발생했을 때 오류 메시지 처리를 해줌
 	.pipe($.plumber())
 	// babel ( es 2015)
-	.pipe($.babel({
-            presets: ['es2015','stage-2']
-        }))
+	// .pipe($.babel({
+ //            presets: ['es2015','stage-2']
+ //        }))
 	// gulp-eslint: ESLint로 JS 파일 검사
 	// 검사 규칙은 .eslintrc 파일에 JSON 형식으로 작성
 	// ESLint 규칙: http://eslint.org/docs/rules/
-	.pipe($.eslint())
+	// .pipe($.eslint())
 	.pipe($.eslint.format())
 	.pipe($.eslint.failOnError())
 	
