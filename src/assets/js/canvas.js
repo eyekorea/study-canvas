@@ -97,7 +97,11 @@
 	}
 
 	Canvas.prototype.ele = function(){
-		return instance.rootElement;
+		return this.rootElement;
+	}
+
+	Canvas.prototype.context = function(){
+		return this.context;
 	}
 
 
