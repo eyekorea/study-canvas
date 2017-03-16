@@ -11,5 +11,8 @@ var utill = {
 			returnObj[ key ] = objB[ key ];
 		}
 		return returnObj;
+	},
+	randomRange : function (n1, n2) {
+		return (Math.random() * (n2 - n1 + 1)) + n1 ;
 	}
 }
