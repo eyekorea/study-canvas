@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+  <link rel="stylesheet" href="../../assets/css/scrollBar.css">
+</head>
+<body>
+<link href="https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css" rel="stylesheet" type="text/css" />
+<script src="https://code.jquery.com/jquery-3.1.0.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <div class="drag-area">
+    <div class="drag-contents">
+      <div class="img_a"><img src="http://pipsum.com/4060x300.jpg" alt=""></div>
+      <div class="img_b" style="display: none;"><img src="http://pipsum.com/1060x300.jpg" alt=""></div>
+    </div>
+    <div class="scroll-area">
+      <div class="scroll-bar"></div>
+    </div>
+  </div>
+  <a href="#" id="imgA">A</a>
+  <a href="#" id="imgB">B</a>
+  <script>
+
+    function percent ( num, num2 ){
+      return Math.abs( num / num2 * 100 );
+    }
+    function percentPx ( num, percent ){
+      return num / 100 * percent;
+    }
+    function easeOutCubic( t, b, c, d ) {
+      t /= d;
+      t--;
+      return c * ( t * t * t + 1 ) + b;
+    }
+    
+    function dragArea ( option ){
+      var dflt = {
+        block : '.drag-area',
+        contents : '.drag-contents',
+        scrollArea : '.scroll-area',
+        scrollBar : '.scroll-bar',
+        contentsDrag : true,
+        easing : .25,
+        contentsDragRevers : false
+      };
+      this.setting = (option) ? $.extend(dflt, option) : dflt;
+      this.rootElement = $( this.setting.block );
+      this.contents = $( this.setting.contents );
+      this.scrollArea = $( this.setting.scrollArea );
+      this.scrollBar = $( this.setting.scrollBar );
+
+      this.isDrag = false;
+      this.left = 0;
+      this.contentsLeft = 0;
+      this.leftPercent = 0;
+      this.x1 = 0;
+      this.y1 = 0;
+      
+      this.direction = 'left';
+      this.autoDirection = 'left';
+
+      this.accelerationObj = {
+        timer : null,
+        checkMs : 10,
+        moveArray : [],
+        isMotion : false,
+        now : 0,
+        scrollLeft : 0,
+        addScroll : 0,
+        duration : 0,
+        motTimer : null
+      };
+    };
+
+    function scrollEnd( instance ){
+      
+      if( instance.accelerationObj.timer !== null ) {
+        window.clearInterval( instance.accelerationObj.timer );
+        instance.accelerationObj.timer = null;
+        acceleration( instance );
+      }
+    };
+
+    function scrollStop( instance ){
+      var accObj = instance.accelerationObj;
+      window.clearTimeout( accObj.motTimer );
+      if( instance.accelerationObj.timer !== null ) {
+        window.clearInterval( instance.accelerationObj.timer );
+        instance.accelerationObj.timer = null;
+      }
+
+      accObj.moveArray = [];
+      accObj.isMotion = false;
+      instance.autoRoll();
+    };
+    
+    function acceleration ( instance ){
+        var accObj = instance.accelerationObj,
+            pointLen = accObj.moveArray.length - 1,
+            movePx = accObj.moveArray[ pointLen ] - accObj.moveArray[0], // 이동 거리
+            moveSpeed = movePx / ( accObj.checkMs*pointLen ), // 이동 속도
+            endPx = Math.abs( moveSpeed * 250 ),
+            scrollLeft = (function(){
+              if( instance.direction === 'left' ) {
+                return - endPx;
+              } else {
+                return endPx;
+              }
+            })(),
+            duration = 0.5;
+        if( accObj.moveArray.length === 0 ) {
+
+        } else {
+          accObj.isMotion = true;
+
+          accObj.now = 0;
+          accObj.scrollLeft = instance.contentsLeft; // 현재값
+          accObj.addScroll = scrollLeft; // 추가 값
+          accObj.duration = duration; // 지속시간
+          easing( instance );
+        }
+    };
+    function accelerationChecker( instance ){
+      var obj = instance.accelerationObj;
+      if( obj.moveArray.length>100 ){
+        obj.moveArray.shift();
+      }
+      obj.moveArray.push( Math.abs( instance.contentsLeft ) );
+    };
+
+    function easing ( instance ) {
+      var accObj = instance.accelerationObj,
+          y = easeOutCubic( accObj.now, accObj.scrollLeft, accObj.addScroll, accObj.duration );
+      
+      
+      if( accObj.now < accObj.duration && y < 0 && y > instance.x1 ){
+        if( !isNaN( y ) ){
+          accObj.motTimer = window.setTimeout( function(){
+            easing ( instance );
+          }, 16 );
+          accObj.now += 0.016;
+        }
+        
+      } else {
+        window.clearTimeout( accObj.motTimer );
+        accObj.isMotion = false;
+        accObj.moveArray = [];
+        if( y > 0 ) {
+          y = 0;
+        }
+        if( y < instance.x1 ){
+          y = instance.x1;
+        }
+        instance.autoRoll();
+      }
+      
+      if( !isNaN( y ) ) {
+        instance.contentsLeft = y;
+        instance.leftPercent = percent( instance.contentsLeft, ( instance.contents.width() - instance.rootElement.width() ) );
+        instance.scrollBarPosition();
+        instance.contents.css( 'left', y );
+      } else {
+        window.clearTimeout( accObj.motTimer );
+        accObj.isMotion = false;
+        accObj.moveArray = [];
+        instance.autoRoll();
+      }
+    }
+
+    // dragArea.prototype.
+    dragArea.prototype.contentsPosition = function(){
+      var instance = this;
+      instance.contentsLeft =  - percentPx( instance.contents.width() - instance.rootElement.width() , instance.leftPercent ) ;
+      instance.contents.css({
+        'left' :  instance.contentsLeft
+      });
+    };
+
+    dragArea.prototype.scrollBarPosition = function(){
+      var instance = this;
+      instance.left =  percentPx( instance.scrollArea.width() - instance.scrollBar.width() , instance.leftPercent ) ;
+      instance.scrollBar.css({
+        'left' : instance.left
+      });
+    };
+
+    dragArea.prototype.rePosition = function(){
+      var instance = this;
+      instance.left = percentPx( instance.scrollArea.width() - instance.scrollBar.width() , instance.leftPercent ) ;
+      instance.contentsLeft = - percentPx( instance.contents.width() - instance.rootElement.width() , instance.leftPercent ) ;
+      instance.contents.css({
+        'left' :  instance.contentsLeft
+      });
+      instance.scrollBar.css({
+        'left' : instance.left
+      });
+    };
+
+    dragArea.prototype.init = function(){
+      var instance = this;
+      instance.scrollBar.draggable({
+        axis: "x",
+        containment: "parent",
+        scroll: true,
+        start : function(){
+          instance.scrollArea.addClass('dragable');
+          instance.autoStop();
+        },
+        drag : function( event, ui ){
+          instance.left = ui.position.left;
+          instance.leftPercent = percent( instance.left , ( instance.scrollArea.width() - instance.scrollBar.width() ) );
+          instance.contentsPosition();
+        },
+        stop : function(){
+          instance.scrollArea.removeClass('dragable');
+
+          instance.autoRoll();
+        }
+      });
+
+      if( instance.setting.contentsDrag ){
+        instance.x1 = instance.rootElement.width() - instance.contents.width();
+        instance.y1 = instance.rootElement.height() - instance.contents.height();
+        instance.contents.draggable({
+          axis: "x",
+          containment : [ instance.x1, instance.y1, 0 , 0],
+          start : function(){
+            instance.autoStop();
+            if( instance.accelerationObj.timer === null ){
+              instance.accelerationObj.timer = window.setInterval( function(){
+                accelerationChecker( instance );
+              }, instance.accelerationObj.checkMs );
+            }
+          },
+          drag : function( event, ui ){
+            if( instance.contentsLeft > ui.position.left ){
+              instance.direction = 'left';
+            } else {
+              instance.direction = 'right';
+            }
+            instance.contentsLeft = ui.position.left;
+            instance.leftPercent = percent( instance.contentsLeft, ( instance.contents.width() - instance.rootElement.width() ) );
+            instance.scrollBarPosition();
+          },
+          stop : function(){
+            scrollEnd ( instance );
+          }
+        });
+      }
+    };
+
+    dragArea.prototype.reset = function(){
+      this.autoStop();
+      this.contentsLeft = 0;
+      this.leftPercent = 0;
+      this.x1 = this.rootElement.width() - this.contents.width();
+      this.y1 = this.rootElement.height() - this.contents.height();
+      this.direction = 'left';
+      this.autoDirection = 'left';
+      this.rePosition();
+      this.autoRoll();
+    };
+
+    dragArea.prototype.autoRoll = function(){
+      var instance = this,
+          dir = (instance.autoDirection === 'left')?instance.x1 : 0,
+          du = (function(){
+            if( instance.autoDirection === 'left' ){
+              return ( 50000 - percentPx( 50000, instance.leftPercent ) );
+            } else {
+              return ( 50000 - percentPx( 50000, (100 - instance.leftPercent) ) );
+            }
+          })();
+      
+      instance.contents.stop().animate({
+        'left' : dir
+      },{
+        duration : du,
+        step : function(){
+          instance.contentsLeft = parseInt( instance.contents.css('left') , 10);
+          instance.leftPercent = percent( instance.contentsLeft, ( instance.contents.width() - instance.rootElement.width() ) );
+          instance.scrollBarPosition();
+        },
+        easeing: 'linear',
+        complete: function(){
+          if( instance.autoDirection === 'left' ){
+            instance.autoDirection = 'right'
+          } else {
+            instance.autoDirection = 'left'
+          }
+          instance.autoRoll();
+        }
+      });
+    };
+
+    dragArea.prototype.autoStop = function(){
+      var instance = this;
+      instance.contents.stop();
+    }
+
+
+    var drag = new dragArea();
+
+
+    $(window).on('load', function(){
+       drag.init();
+       drag.autoRoll();
+     }).on('resize', function(){
+        drag.rePosition();
+     });
+
+     $('#imgA').on('click', function(){
+        drag.autoStop();
+        $('.img_a').fadeIn(function(){
+          drag.reset();
+        });
+        $('.img_b').fadeOut();
+     });
+     $('#imgB').on('click', function(){
+        drag.autoStop();
+        $('.img_a').fadeOut();
+        $('.img_b').fadeIn(function(){
+          drag.reset();
+        });
+     });
+  </script>
+</body>
+</html>
